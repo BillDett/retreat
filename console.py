@@ -1,4 +1,7 @@
 import pi3d
+import RPi.GPIO as GPIO
+import os
+import time
 from random import random, randint
 from numpy import arccos, cos, sin, radians, pi
 
@@ -33,6 +36,13 @@ def downgradePins(pins, percentage):
 
 def coll_rate_string():
 	return 'Collection Rate: ' + str(collection_rate) + '%'
+
+# Set up buttons
+GPIO.setmode(GPIO.BCM)
+
+GPIO.setup(19, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
 
 # Set up the environment
 DISPLAY = pi3d.Display.create()
@@ -132,6 +142,20 @@ while DISPLAY.loop_running():
 		break
 	elif k == 100:	# 'd'
 		downgradePins(pins, 0.20)
+	
+	# Watch for button presses
+	input_20 = GPIO.input(20)
+	input_19 = GPIO.input(19)
+	if input_20 == False:
+		print('Button 20 Pressed')
+		downgradePins(pins, 0.20)
+		os.system('mpg123 -q glass.mp3 &')
+		time.sleep(0.2)
+	elif input_19 == False:
+		print('Button 19 Pressed')
+		os.system('mpg123 -q dog.mp3 &')
+		time.sleep(0.2)
+
 	logo.draw()
 	title.draw()
 	collrate.draw()
