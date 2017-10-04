@@ -1,3 +1,5 @@
+
+
 /*
 *  Arduino sketch for console puzzles.
 
@@ -47,17 +49,17 @@ void setup() {
   pinMode(keySwitchGreen, OUTPUT);
   pinMode(keySwitchRed, OUTPUT);
   
-  pinMode(xSwitchPin, INPUT);
+  pinMode(xSwitchPin, INPUT_PULLUP);
   pinMode(oSwitchPin, INPUT);  
   pinMode(tictacGreen, OUTPUT);
   pinMode(tictacRed, OUTPUT);
 
-  pinMode(patch1SwitchPin, INPUT);  
-  pinMode(patch2SwitchPin, INPUT);  
-  pinMode(patch3SwitchPin, INPUT);  
-  pinMode(patch4SwitchPin, INPUT);  
-  pinMode(patch5SwitchPin, INPUT);  
-  pinMode(patch6SwitchPin, INPUT);  
+  pinMode(patch1SwitchPin, INPUT_PULLUP);  
+  pinMode(patch2SwitchPin, INPUT_PULLUP);  
+  pinMode(patch3SwitchPin, INPUT_PULLUP);  
+  pinMode(patch4SwitchPin, INPUT_PULLUP);  
+  pinMode(patch5SwitchPin, INPUT_PULLUP);  
+  pinMode(patch6SwitchPin, INPUT_PULLUP);  
   pinMode(patchGreen, OUTPUT);
   pinMode(patchRed, OUTPUT);
   Serial.begin(9600);
@@ -66,25 +68,19 @@ void setup() {
 
 void loop() {
   if ( state == KEY ) {
-    Serial.println(digitalRead(keySwitchPin));
+     Serial.println("Now Key");
      if ( digitalRead(keySwitchPin) == HIGH ) {
-       Serial.println("Yup");
        digitalWrite(keySwitchGreen, HIGH);
-       //analogWrite(keySwitchGreen, 255);
        digitalWrite(keySwitchRed, LOW);
-       //analogWrite(keySwitchRed, 0);
-       delay(500);
        state = TOGGLE;
        // TODO: Tell the Pi to play a sound
      } else {
-       Serial.println("Nope");
        digitalWrite(keySwitchGreen, LOW);
-       //analogWrite(keySwitchGreen, 0);
        digitalWrite(keySwitchRed, HIGH);
-       //analogWrite(keySwitchRed, 255);
      }
   } else if ( state == TOGGLE ) {
-     if ( (digitalRead(xSwitchPin) == HIGH) && (digitalRead(oSwitchPin) == HIGH) ) {
+     Serial.println("Now Toggle");
+     if ( (digitalRead(xSwitchPin) == LOW) && (digitalRead(oSwitchPin) == LOW) ) {
        digitalWrite(tictacGreen, HIGH);
        digitalWrite(tictacRed, LOW);
        state = PATCH;
@@ -94,12 +90,29 @@ void loop() {
        digitalWrite(tictacRed, HIGH);
      }    
   } else if ( state == PATCH ) {
-     if ( (digitalRead(patch1SwitchPin) == HIGH)
-           && (digitalRead(patch2SwitchPin) == HIGH) 
-           && (digitalRead(patch3SwitchPin) == HIGH) 
-           && (digitalRead(patch4SwitchPin) == HIGH) 
-           && (digitalRead(patch5SwitchPin) == HIGH) 
-           && (digitalRead(patch6SwitchPin) == HIGH) ) {
+     //Serial.println("Now Patch");
+     Serial.print("0: ");
+     Serial.print(analogRead(patch1SwitchPin));
+     Serial.print(" 1: ");
+     Serial.print(analogRead(patch2SwitchPin));
+     Serial.print(" 2: ");
+     Serial.print(analogRead(patch3SwitchPin));
+     Serial.print(" 3: ");
+     Serial.print(analogRead(patch4SwitchPin));
+     Serial.print(" 4: ");
+     Serial.print(analogRead(patch5SwitchPin));
+     Serial.print(" 5: ");
+     Serial.print(analogRead(patch6SwitchPin));
+     Serial.println("");
+//     delay(1000);
+
+     if ( (analogRead(patch1SwitchPin) >= 22 && analogRead(patch1SwitchPin) <= 24)
+       &&  (analogRead(patch2SwitchPin) >= 34 && analogRead(patch2SwitchPin) <= 36)
+       &&  (analogRead(patch3SwitchPin) >= 42 && analogRead(patch3SwitchPin) <= 44)
+       &&  (analogRead(patch4SwitchPin) >= 41 && analogRead(patch4SwitchPin) <= 43)
+       &&  (analogRead(patch5SwitchPin) >= 19 && analogRead(patch5SwitchPin) <= 21)
+       &&  (analogRead(patch6SwitchPin) >= 54 && analogRead(patch6SwitchPin) <= 56) ) {
+       Serial.println("YEP!!!"); 
        digitalWrite(patchGreen, HIGH);
        digitalWrite(patchRed, LOW);
        // TODO: Notify the Pi!!
