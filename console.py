@@ -1,9 +1,13 @@
 import pi3d
 import RPi.GPIO as GPIO
 import os
+import threading
 import time
+import serial
 from random import random, randint
 from numpy import arccos, cos, sin, radians, pi
+
+
 
 # Generate a random point around a sphere with given radius
 def randomPoint(radius):
@@ -34,6 +38,22 @@ def downgradePins(pins, percentage):
 				num_stopping_stations -= 1
 				num_offline_stations += 1
 
+
+# Handles the listener for callback from Arduino that door should be unlocked
+unlock_door = False
+class ArduinoListener( threading.Thread ):
+	def __init__( self ):
+		super(ArduinoListener, self).__init__()
+		# Open Serial port to talk to Arduino
+		self.ser = serial.Serial('/dev/ttyACM0', 9600)
+
+	def run( self ):
+		global unlock_door
+		serinput = self.ser.read()
+		if serinput.decode("utf-8") == "Y":
+			print("Got response from Arduino")
+			unlock_door = True
+
 def coll_rate_string():
 	return 'Collection Rate: ' + str(collection_rate) + '%'
 
@@ -46,6 +66,7 @@ GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # Set up the environment
 DISPLAY = pi3d.Display.create()
+#DISPLAY = pi3d.Display.create(w=800, h=600)	# For debugging
 DISPLAY.set_background(0.0,0.0,0.0,1) # Black
 CAM = pi3d.Camera(eye=(0.0, 0.0, -7.0))
 CAM2D = pi3d.Camera(is_3d=False)
@@ -77,7 +98,7 @@ ball = pi3d.Sphere(sides=24, slices=24)
 # Imperial Logo
 isdlogo = pi3d.Texture('imperialseal-100px.png')
 logo = pi3d.ImageSprite(isdlogo, shader)
-logo.position(4.5, 2.0, backplaneZ)
+logo.position(4.0, 2.0, backplaneZ)
 
 # Title
 mytext="Unobtanium Mining Command Console"
@@ -132,6 +153,10 @@ rot = -0.05
 # listen for keystrokes
 mykeys = pi3d.Keyboard()
 
+# Start listening to the Arduino
+al = ArduinoListener()
+al.start()
+
 # TODO: Need to call downgradePins() via GPIO switches (see logic in notes)
 while DISPLAY.loop_running():
 	# store keystrokes
@@ -155,6 +180,11 @@ while DISPLAY.loop_running():
 		print('Button 19 Pressed')
 		os.system('mpg123 -q dog.mp3 &')
 		time.sleep(0.2)
+
+	# Did we get a message from Arduino to open the door?
+	if unlock_door:
+		downgradePins(pins, 0.20)	# TODO: actually we should set a GPIO pin HIGH to trigger door
+		unlock_door = False
 
 	logo.draw()
 	title.draw()
