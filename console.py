@@ -55,7 +55,11 @@ class ArduinoListener( threading.Thread ):
 			unlock_door = True
 
 def coll_rate_string():
-	return 'Collection Rate: ' + str(collection_rate) + '%'
+	return 'COLLECTION RATE: ' + str(collection_rate) + '%'
+
+def coll_amount_string():
+	return 'AMOUNT COLLECTED: ' + "{0:.2f}".format(collection_amount) + ' units'
+
 
 # Set up buttons
 GPIO.setmode(GPIO.BCM)
@@ -74,7 +78,7 @@ lights = pi3d.Light(lightamb = (0.8, 0.8, 0.9))
 shader = pi3d.Shader('uv_light')
 flatshader = pi3d.Shader("uv_flat")
 fontfile = '/home/pi/pi3d_demos-master/fonts/NotoSans-Regular.ttf'
-font = pi3d.Font(fontfile, (221,0,170,255))
+font = pi3d.Font(fontfile, font_size=32, color=(255,255,255,255))
 font.blend = True
 
 xmargin = DISPLAY.width * 0.05
@@ -90,6 +94,7 @@ num_online_stations = num_stations
 num_stopping_stations = 0
 num_offline_stations = 0
 collection_rate = 100
+collection_amount = 16834
 
 # Planet
 earthimg = pi3d.Texture('planet.jpg')
@@ -101,25 +106,36 @@ logo = pi3d.ImageSprite(isdlogo, shader)
 logo.position(4.0, 2.0, backplaneZ)
 
 # Title
-mytext="Unobtanium Mining Command Console"
+mytext="UNOBTANIUM MINING COMMAND CONSOLE"
 title = pi3d.FixedString(fontfile, mytext, font_size=48, camera=CAM2D, shader=flatshader, f_type='SMOOTH', justify='L')
 tx = topleftx + title.sprite.width/2
 ty = toplefty - title.sprite.height/2
 title.sprite.position(tx, ty, backplaneZ)
 
+# Collection Amount
+collamt = pi3d.String(font=font, string=coll_amount_string(), x=-1.45, y=1.00, z=-3 )
+collamt.set_material((1.0, 1.0, 1.0))
+collamt.set_shader(shader)
+
 # Collection Rate
-# TODO: Why is it not showing as white?
-# TODO: Sizing not correct- missing the '%'- smaller font?
 ymargin = DISPLAY.height * 0.25
-#collrate = pi3d.String(font=font, string="Collection Rate: 100%", x=topleftx, y=toplefty-ymargin )
-collrate = pi3d.String(font=font, string=coll_rate_string(), x=-1.75, y=1.0, z=-3 )
+collrate = pi3d.String(font=font, string=coll_rate_string(), x=-1.75, y=0.75, z=-3 )
 collrate.set_material((1.0, 1.0, 1.0))
 collrate.set_shader(shader)
 
-
-# Station Status
-# TODO: List out indicator of number of online, offline and stopping stations (green, amber, red)
-
+# Status Indicator
+statusimg = pi3d.Texture('status.png')
+status = pi3d.ImageSprite(statusimg, shader)
+status.position(-3.0, 0.45, backplaneZ-1)
+online = pi3d.String(font=font, string=str(num_online_stations), x=-2.70, y=0.65, z=backplaneZ-1 )
+online.set_material((1.0, 1.0, 1.0))
+online.set_shader(shader)
+stopping = pi3d.String(font=font, string=str(num_stopping_stations), x=-2.70, y=0.45, z=backplaneZ-1 )
+stopping.set_material((1.0, 1.0, 1.0))
+stopping.set_shader(shader)
+offline = pi3d.String(font=font, string=str(num_offline_stations), x=-2.70, y=0.25, z=backplaneZ-1 )
+offline.set_material((1.0, 1.0, 1.0))
+offline.set_shader(shader)
 
 # Lower Left Greeblie
 # TODO: "Sample Rate" - bogus scrolling bar chart (lift code from Processing sketch)
@@ -154,8 +170,8 @@ rot = -0.05
 mykeys = pi3d.Keyboard()
 
 # Start listening to the Arduino
-al = ArduinoListener()
-al.start()
+#al = ArduinoListener()
+#al.start()
 
 # TODO: Need to call downgradePins() via GPIO switches (see logic in notes)
 while DISPLAY.loop_running():
@@ -187,10 +203,21 @@ while DISPLAY.loop_running():
 		unlock_door = False
 
 	logo.draw()
+	status.draw()
 	title.draw()
 	collrate.draw()
-	collection_rate *= (1-rot)
+	collamt.draw()
+	# TODO: Update Collection Rate based on which GPIO pins are set (drop 25% for each one)
+	#collection_rate *= (1+rot)
+	collection_amount += (-1 * rot)
 	collrate.quick_change(coll_rate_string())
+	collamt.quick_change(coll_amount_string())
+	online.draw()
+	online.quick_change(str(num_online_stations))
+	stopping.draw()
+	stopping.quick_change(str(num_stopping_stations))
+	offline.draw()
+	offline.quick_change(str(num_offline_stations))
 	ball.draw(shader, [earthimg])
 	ball.rotateIncY(rot)
 	for pin in pins:
