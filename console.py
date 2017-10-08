@@ -60,6 +60,28 @@ def coll_rate_string():
 def coll_amount_string():
 	return 'AMOUNT COLLECTED: ' + "{0:.2f}".format(collection_amount) + ' units'
 
+def current_time_millis():
+    return int(round(time.time() * 1000))
+
+def draw_samplerate():
+    global sr_index
+    global sr_time
+
+	# Time to change sr_index?
+    now = current_time_millis()
+    if (now - sr_time) > 500:
+        sr_index += 1
+        sr_time = now
+        if sr_index > 3:
+            sr_index = 1
+
+    if sr_index == 1:
+        samplerate1.draw()
+    elif sr_index == 2:
+        samplerate2.draw()
+    else:
+        samplerate3.draw()
+
 
 # Set up buttons
 GPIO.setmode(GPIO.BCM)
@@ -137,9 +159,18 @@ offline = pi3d.String(font=font, string=str(num_offline_stations), x=-2.70, y=0.
 offline.set_material((1.0, 1.0, 1.0))
 offline.set_shader(shader)
 
-# Lower Left Greeblie
-# TODO: "Sample Rate" - bogus scrolling bar chart (lift code from Processing sketch)
-
+# "Sample Rate" - bogus scrolling bar chart 
+samplerate1img = pi3d.Texture('samplerate.png')
+samplerate1 = pi3d.ImageSprite(samplerate1img, shader)
+samplerate1.position(-2.6, -0.65, backplaneZ-1.8)
+samplerate2img = pi3d.Texture('samplerate2.png')
+samplerate2 = pi3d.ImageSprite(samplerate2img, shader)
+samplerate2.position(-2.6, -0.65, backplaneZ-1.8)
+samplerate3img = pi3d.Texture('samplerate3.png')
+samplerate3 = pi3d.ImageSprite(samplerate3img, shader)
+samplerate3.position(-2.6, -0.65, backplaneZ-1.8)
+sr_index = 1
+sr_time = current_time_millis()
 
 # Lower Right Greeblie
 # TODO: "AMR STAT" - bogus list of floating point numbers scrolling infinitely
@@ -202,8 +233,10 @@ while DISPLAY.loop_running():
 		downgradePins(pins, 0.20)	# TODO: actually we should set a GPIO pin HIGH to trigger door
 		unlock_door = False
 
+	# Draw everything
 	logo.draw()
 	status.draw()
+	draw_samplerate()
 	title.draw()
 	collrate.draw()
 	collamt.draw()
