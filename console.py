@@ -2,12 +2,17 @@ import pi3d
 import RPi.GPIO as GPIO
 import os
 import threading
+import subprocess
+import signal
 import time
 import serial
 from random import random, randint
 from numpy import arccos, cos, sin, radians, pi
 
 
+def stop_background():
+	global background
+	os.killpg(os.getpgid(background.pid), signal.SIGTERM)
 
 # Generate a random point around a sphere with given radius
 def randomPoint(radius):
@@ -20,23 +25,20 @@ def randomPoint(radius):
 	z = sin(latitude) * radius
 	return (x, y, z)
 
-# Randomly 'downgrade' pins from GOOD->BAD->DESTROY
-def downgradePins(pins, percentage):
+# Take 25% of the stations offline
+def downgradePins(pins):
+	global num_stations
 	global num_online_stations
 	global num_offline_stations
-	global num_stopping_stations
+	count = int(num_stations * 0.25)
+	num_online_stations -= count
+	num_offline_stations += count
+	print('Online: ' + str(num_online_stations) + ' offline: ' + str(num_offline_stations))
 	for p in pins:
-		if random() <= percentage:		# We're going to degrade this Pin
-			if p['status'] == GOOD:
-				p['status'] = BAD
-				p['line'].set_material(pinBadColor)
-				num_online_stations -= 1
-				num_stopping_stations += 1
-			elif p['status'] == BAD:
-				p['status'] = DESTROY
-				p['line'].set_material(pinDestroyColor)
-				num_stopping_stations -= 1
-				num_offline_stations += 1
+		if count > 0 and p['status'] == GOOD:
+			p['status'] = DESTROY
+			p['line'].set_material(pinDestroyColor)
+			count -= 1
 
 
 # Handles the listener for callback from Arduino that door should be unlocked
@@ -82,17 +84,75 @@ def draw_samplerate():
     else:
         samplerate3.draw()
 
+def button_pressed(channel):
+	global button1_pressed
+	global button2_pressed
+	global button3_pressed
+	global button4_pressed
+	global explosion
+	if channel == button1:
+		if not button1_pressed:
+			print("BUTTON1")
+			downgradePins(pins)
+			os.system('aplay deploy.wav &')
+		button1_pressed = True
+	elif channel == button2:
+		if not button2_pressed:
+			print("BUTTON2")
+			downgradePins(pins)
+			os.system('aplay deploy.wav &')
+		button2_pressed = True
+	elif channel == button3:
+		if not button3_pressed:
+			print("BUTTON3")
+			downgradePins(pins)
+			os.system('aplay deploy.wav &')
+		button3_pressed = True
+	elif channel == button4:
+		if not button4_pressed:
+			print("BUTTON4")
+			downgradePins(pins)
+			os.system('aplay deploy.wav &')
+		button4_pressed = True
+
+	if button1_pressed and button2_pressed and button3_pressed and button4_pressed:
+		print("BOOM!")
+		time.sleep(1)
+		if not explosion:
+			os.system('aplay finale.wav')
+			# TODO: FLASH WARNING OVER DISPLAY NEED TO THINK HOW TO DO THAT!!
+			stop_background()
+			os.system('aplay explosion.wav')
+			explosion = True
+
 
 # Set up buttons
-GPIO.setmode(GPIO.BCM)
+button1 = 25
+button2 = 23
+button3 = 21
+button4 = 16
 
-GPIO.setup(19, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(button1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(button1, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+GPIO.setup(button2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(button2, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+GPIO.setup(button3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(button3, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+GPIO.setup(button4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.add_event_detect(button4, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+
+button1_pressed = False
+button2_pressed = False
+button3_pressed = False
+button4_pressed = False
+
+explosion = False
 
 
 # Set up the environment
-DISPLAY = pi3d.Display.create()
-#DISPLAY = pi3d.Display.create(w=800, h=600)	# For debugging
+#DISPLAY = pi3d.Display.create()
+DISPLAY = pi3d.Display.create(w=800, h=600)	# For debugging
 DISPLAY.set_background(0.0,0.0,0.0,1) # Black
 CAM = pi3d.Camera(eye=(0.0, 0.0, -7.0))
 CAM2D = pi3d.Camera(is_3d=False)
@@ -111,7 +171,7 @@ toplefty = DISPLAY.height/2 - ymargin	# Top left corner starting Y coordinate fo
 backplaneZ = 0
 
 # Mining "Stats"
-num_stations = 75
+num_stations = 120
 num_online_stations = num_stations
 num_stopping_stations = 0
 num_offline_stations = 0
@@ -149,13 +209,13 @@ collrate.set_shader(shader)
 statusimg = pi3d.Texture('status.png')
 status = pi3d.ImageSprite(statusimg, shader)
 status.position(-3.0, 0.45, backplaneZ-1)
-online = pi3d.String(font=font, string=str(num_online_stations), x=-2.70, y=0.65, z=backplaneZ-1 )
+online = pi3d.String(font=font, string='999', x=-2.70, y=0.65, z=backplaneZ-1 )
 online.set_material((1.0, 1.0, 1.0))
 online.set_shader(shader)
-stopping = pi3d.String(font=font, string=str(num_stopping_stations), x=-2.70, y=0.45, z=backplaneZ-1 )
+stopping = pi3d.String(font=font, string='999', x=-2.70, y=0.45, z=backplaneZ-1 )
 stopping.set_material((1.0, 1.0, 1.0))
 stopping.set_shader(shader)
-offline = pi3d.String(font=font, string=str(num_offline_stations), x=-2.70, y=0.25, z=backplaneZ-1 )
+offline = pi3d.String(font=font, string='999', x=-2.70, y=0.25, z=backplaneZ-1 )
 offline.set_material((1.0, 1.0, 1.0))
 offline.set_shader(shader)
 
@@ -180,7 +240,6 @@ sr_time = current_time_millis()
 # "Pins" around the globe showing the Unobtanium mining operations
 # Each Pin is a tuple of a pi3d.Lines and a status
 pinGoodColor = (129/255, 220/255, 247/255)		# Light Blue
-pinBadColor = (252/255, 106/255, 28/255)		# Dark Orange
 pinDestroyColor = (252/255, 28/255, 28/255)		# Red
 GOOD = 0
 BAD = 1
@@ -200,38 +259,30 @@ rot = -0.05
 # listen for keystrokes
 mykeys = pi3d.Keyboard()
 
+# Start the background machine noise
+#os.system('omxplayer --no-osd --no-keys --loop machine.wav &')
+background = subprocess.Popen(['omxplayer', '--no-osd', '--no-keys', '--loop', 'machine.wav'],preexec_fn=os.setsid)
+
 # Start listening to the Arduino
 #al = ArduinoListener()
 #al.start()
 
-# TODO: Need to call downgradePins() via GPIO switches (see logic in notes)
+# Here's where all the action happens
 while DISPLAY.loop_running():
 	# store keystrokes
 	k = mykeys.read()
 	if k == 27: # ESC
 		mykeys.close()
+		stop_background()
 		DISPLAY.destroy()
 		break
-	elif k == 100:	# 'd'
-		downgradePins(pins, 0.20)
 	
-	# Watch for button presses
-	input_20 = GPIO.input(20)
-	input_19 = GPIO.input(19)
-	if input_20 == False:
-		print('Button 20 Pressed')
-		downgradePins(pins, 0.20)
-		os.system('mpg123 -q glass.mp3 &')
-		time.sleep(0.2)
-	elif input_19 == False:
-		print('Button 19 Pressed')
-		os.system('mpg123 -q dog.mp3 &')
-		time.sleep(0.2)
-
 	# Did we get a message from Arduino to open the door?
 	if unlock_door:
-		downgradePins(pins, 0.20)	# TODO: actually we should set a GPIO pin HIGH to trigger door
+		# TODO: actually we should set a GPIO pin HIGH to trigger door
 		unlock_door = False
+	
+	collection_amount += (-1 * rot)
 
 	# Draw everything
 	logo.draw()
@@ -240,9 +291,6 @@ while DISPLAY.loop_running():
 	title.draw()
 	collrate.draw()
 	collamt.draw()
-	# TODO: Update Collection Rate based on which GPIO pins are set (drop 25% for each one)
-	#collection_rate *= (1+rot)
-	collection_amount += (-1 * rot)
 	collrate.quick_change(coll_rate_string())
 	collamt.quick_change(coll_amount_string())
 	online.draw()
