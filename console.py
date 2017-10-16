@@ -66,23 +66,24 @@ def current_time_millis():
     return int(round(time.time() * 1000))
 
 def draw_samplerate():
-    global sr_index
-    global sr_time
+	global sr_index
+	global sr_time
+	global explosion
+	if not explosion:
+		# Time to change sr_index?
+		now = current_time_millis()
+		if (now - sr_time) > 500:
+			sr_index += 1
+			sr_time = now
+			if sr_index > 3:
+				sr_index = 1
 
-	# Time to change sr_index?
-    now = current_time_millis()
-    if (now - sr_time) > 500:
-        sr_index += 1
-        sr_time = now
-        if sr_index > 3:
-            sr_index = 1
-
-    if sr_index == 1:
-        samplerate1.draw()
-    elif sr_index == 2:
-        samplerate2.draw()
-    else:
-        samplerate3.draw()
+		if sr_index == 1:
+			samplerate1.draw()
+		elif sr_index == 2:
+			samplerate2.draw()
+		else:
+			samplerate3.draw()
 
 def button_pressed(channel):
 	global button1_pressed
@@ -90,6 +91,8 @@ def button_pressed(channel):
 	global button3_pressed
 	global button4_pressed
 	global explosion
+	global collection_rate
+	global overloading
 	if channel == button1:
 		if not button1_pressed:
 			print("BUTTON1")
@@ -119,10 +122,12 @@ def button_pressed(channel):
 		print("BOOM!")
 		time.sleep(1)
 		if not explosion:
+			overloading = current_time_millis()
 			os.system('aplay finale.wav')
 			# TODO: FLASH WARNING OVER DISPLAY NEED TO THINK HOW TO DO THAT!!
 			stop_background()
 			os.system('aplay explosion.wav')
+			collection_rate = 0
 			explosion = True
 
 
@@ -147,12 +152,12 @@ button2_pressed = False
 button3_pressed = False
 button4_pressed = False
 
-explosion = False
-
+explosion = False		# Has the explosion occured? 
+overloading = 0			# We're in overload mode
 
 # Set up the environment
-#DISPLAY = pi3d.Display.create()
-DISPLAY = pi3d.Display.create(w=800, h=600)	# For debugging
+DISPLAY = pi3d.Display.create()
+#DISPLAY = pi3d.Display.create(w=800, h=600)	# For debugging
 DISPLAY.set_background(0.0,0.0,0.0,1) # Black
 CAM = pi3d.Camera(eye=(0.0, 0.0, -7.0))
 CAM2D = pi3d.Camera(is_3d=False)
@@ -236,6 +241,15 @@ sr_time = current_time_millis()
 # TODO: "AMR STAT" - bogus list of floating point numbers scrolling infinitely
 
 
+# OVERLOAD warning flasher
+overloadimg = pi3d.Texture('overload.png')
+overload = pi3d.ImageSprite(overloadimg, shader)
+overload.position(0, 0, backplaneZ-6)
+
+# OFFLINE message
+offlineimg = pi3d.Texture('offline.png')
+we_are_offline = pi3d.ImageSprite(offlineimg, shader)
+we_are_offline.position(0, 0, backplaneZ-6)
 
 # "Pins" around the globe showing the Unobtanium mining operations
 # Each Pin is a tuple of a pi3d.Lines and a status
@@ -291,16 +305,29 @@ while DISPLAY.loop_running():
 	title.draw()
 	collrate.draw()
 	collamt.draw()
-	collrate.quick_change(coll_rate_string())
-	collamt.quick_change(coll_amount_string())
 	online.draw()
-	online.quick_change(str(num_online_stations))
 	stopping.draw()
-	stopping.quick_change(str(num_stopping_stations))
 	offline.draw()
-	offline.quick_change(str(num_offline_stations))
 	ball.draw(shader, [earthimg])
-	ball.rotateIncY(rot)
+	if not explosion:
+		collrate.quick_change(coll_rate_string())
+		collamt.quick_change(coll_amount_string())
+		online.quick_change(str(num_online_stations))
+		stopping.quick_change(str(num_stopping_stations))
+		offline.quick_change(str(num_offline_stations))
+		ball.rotateIncY(rot)
 	for pin in pins:
 		pin['line'].draw()
-		pin['line'].rotateIncY(rot)
+		if not explosion:
+			pin['line'].rotateIncY(rot)
+
+	if not explosion and not overloading == 0:
+		now = current_time_millis()
+		delta = now - overloading
+		if  delta > 1000 and delta < 2000:
+			overload.draw()
+		if delta > 2000:
+			overloading = now
+
+	if explosion:
+		we_are_offline.draw()
