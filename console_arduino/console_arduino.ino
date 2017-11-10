@@ -36,6 +36,8 @@ const int patchRed = 4;
 
 const int resetPin = 10;    // TODO: Set an interrupt for this pin- reset back to initial KEY state
 
+int completed = 0;  // Is puzzle completed (e.g. patch was solved)
+
 enum puzzleState {
   KEY,
   TOGGLE,
@@ -50,7 +52,7 @@ void setup() {
   pinMode(keySwitchRed, OUTPUT);
   
   pinMode(xSwitchPin, INPUT_PULLUP);
-  pinMode(oSwitchPin, INPUT);  
+  pinMode(oSwitchPin, INPUT_PULLUP);  
   pinMode(tictacGreen, OUTPUT);
   pinMode(tictacRed, OUTPUT);
 
@@ -62,6 +64,7 @@ void setup() {
   pinMode(patch6SwitchPin, INPUT_PULLUP);  
   pinMode(patchGreen, OUTPUT);
   pinMode(patchRed, OUTPUT);
+
   Serial.begin(9600);
   state = KEY;
 }
@@ -72,8 +75,8 @@ void loop() {
      if ( digitalRead(keySwitchPin) == HIGH ) {
        digitalWrite(keySwitchGreen, HIGH);
        digitalWrite(keySwitchRed, LOW);
+       digitalWrite(tictacRed, HIGH);       
        state = TOGGLE;
-       Serial.print("Y");
        // TODO: Tell the Pi to play a sound
      } else {
        digitalWrite(keySwitchGreen, LOW);
@@ -84,6 +87,7 @@ void loop() {
      if ( (digitalRead(xSwitchPin) == LOW) && (digitalRead(oSwitchPin) == LOW) ) {
        digitalWrite(tictacGreen, HIGH);
        digitalWrite(tictacRed, LOW);
+       digitalWrite(patchRed, HIGH);    
        state = PATCH;
        // TODO: Tell the Pi to play a sound       
      } else {
@@ -109,22 +113,22 @@ void loop() {
      */
 //     delay(1000);
 
-     if ( (analogRead(patch1SwitchPin) >= 22 && analogRead(patch1SwitchPin) <= 24)
-       &&  (analogRead(patch2SwitchPin) >= 34 && analogRead(patch2SwitchPin) <= 36)
-       &&  (analogRead(patch3SwitchPin) >= 42 && analogRead(patch3SwitchPin) <= 44)
-       &&  (analogRead(patch4SwitchPin) >= 41 && analogRead(patch4SwitchPin) <= 43)
-       &&  (analogRead(patch5SwitchPin) >= 19 && analogRead(patch5SwitchPin) <= 21)
-       &&  (analogRead(patch6SwitchPin) >= 54 && analogRead(patch6SwitchPin) <= 56) ) {
-       //Serial.println("YEP!!!"); 
-       digitalWrite(patchGreen, HIGH);
-       digitalWrite(patchRed, LOW);
-       // TODO: Notify the Pi!!
-       
-     } else {
-       digitalWrite(patchGreen, LOW);
-       digitalWrite(patchRed, HIGH);
-     }      
-  }
-  
+    if ( !completed ) {
 
+       if ( (analogRead(patch1SwitchPin) >= 22 && analogRead(patch1SwitchPin) <= 24)
+         &&  (analogRead(patch2SwitchPin) >= 34 && analogRead(patch2SwitchPin) <= 36)
+         &&  (analogRead(patch3SwitchPin) >= 42 && analogRead(patch3SwitchPin) <= 44)
+         &&  (analogRead(patch4SwitchPin) >= 41 && analogRead(patch4SwitchPin) <= 43)
+         &&  (analogRead(patch5SwitchPin) >= 19 && analogRead(patch5SwitchPin) <= 21)
+         &&  (analogRead(patch6SwitchPin) >= 54 && analogRead(patch6SwitchPin) <= 56) ) {
+           digitalWrite(patchGreen, HIGH);
+           digitalWrite(patchRed, LOW);
+           Serial.print("Y"); 
+           completed = 1;
+         } else {
+           digitalWrite(patchGreen, LOW);
+           digitalWrite(patchRed, HIGH);
+       }      
+    }
+  }
 }

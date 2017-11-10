@@ -267,7 +267,7 @@ for p in range(num_stations):
 	pins.append(pin)
 
 # Speed of planet rotation
-rot = -0.05
+rot = -0.15
 #rot = -0.5
 
 # listen for keystrokes
@@ -278,8 +278,8 @@ mykeys = pi3d.Keyboard()
 background = subprocess.Popen(['omxplayer', '--no-osd', '--no-keys', '--loop', 'machine.wav'],preexec_fn=os.setsid)
 
 # Start listening to the Arduino
-#al = ArduinoListener()
-#al.start()
+al = ArduinoListener()
+al.start()
 
 # Here's where all the action happens
 while DISPLAY.loop_running():
