@@ -55,6 +55,15 @@ class ArduinoListener( threading.Thread ):
 		if serinput.decode("utf-8") == "Y":
 			print("Got response from Arduino")
 			unlock_door = True
+			# Add the handlers for the chamber triggers- make them "live"
+			GPIO.setup(button1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+			GPIO.setup(button2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+			GPIO.setup(button3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+			GPIO.setup(button4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+			GPIO.add_event_detect(button1, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+			GPIO.add_event_detect(button2, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+			GPIO.add_event_detect(button3, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+			GPIO.add_event_detect(button4, GPIO.FALLING, callback=button_pressed, bouncetime=300)
 
 def coll_rate_string():
 	return 'COLLECTION RATE: ' + str(collection_rate) + '%'
@@ -137,15 +146,20 @@ button2 = 23
 button3 = 21
 button4 = 16
 
+# Pin to trigger chamber
+chamberPin = 27
+
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(button1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(button1, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+#GPIO.add_event_detect(button1, GPIO.FALLING, callback=button_pressed, bouncetime=300)
 GPIO.setup(button2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(button2, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+#GPIO.add_event_detect(button2, GPIO.FALLING, callback=button_pressed, bouncetime=300)
 GPIO.setup(button3, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(button3, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+#GPIO.add_event_detect(button3, GPIO.FALLING, callback=button_pressed, bouncetime=300)
 GPIO.setup(button4, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.add_event_detect(button4, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+#GPIO.add_event_detect(button4, GPIO.FALLING, callback=button_pressed, bouncetime=300)
+
+GPIO.setup(chamberPin, GPIO.OUT)
 
 button1_pressed = False
 button2_pressed = False
@@ -280,6 +294,7 @@ background = subprocess.Popen(['omxplayer', '--no-osd', '--no-keys', '--loop', '
 # Start listening to the Arduino
 al = ArduinoListener()
 al.start()
+#unlock_door = True 	# TAKE THIS OUT!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 # Here's where all the action happens
 while DISPLAY.loop_running():
@@ -288,12 +303,13 @@ while DISPLAY.loop_running():
 	if k == 27: # ESC
 		mykeys.close()
 		stop_background()
+		GPIO.cleanup()
 		DISPLAY.destroy()
 		break
 	
 	# Did we get a message from Arduino to open the door?
 	if unlock_door:
-		# TODO: actually we should set a GPIO pin HIGH to trigger door
+		GPIO.output(chamberPin, 1)	# Trigger the chamber
 		unlock_door = False
 	
 	collection_amount += (-1 * rot)
@@ -330,4 +346,5 @@ while DISPLAY.loop_running():
 			overloading = now
 
 	if explosion:
+		GPIO.output(chamberPin, 0)	# UnTrigger the chamber
 		we_are_offline.draw()
