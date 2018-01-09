@@ -303,6 +303,7 @@ while DISPLAY.loop_running():
 	if k == 27: # ESC
 		mykeys.close()
 		stop_background()
+		GPIO.output(chamberPin, 0)	# UnTrigger the chamber
 		GPIO.cleanup()
 		DISPLAY.destroy()
 		break

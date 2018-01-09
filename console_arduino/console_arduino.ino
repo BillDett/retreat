@@ -85,12 +85,14 @@ void loop() {
   } else if ( state == TOGGLE ) {
      //Serial.println("Now Toggle");
      if ( (digitalRead(xSwitchPin) == LOW) && (digitalRead(oSwitchPin) == LOW) ) {
+        //Serial.println("OK");
        digitalWrite(tictacGreen, HIGH);
        digitalWrite(tictacRed, LOW);
        digitalWrite(patchRed, HIGH);    
        state = PATCH;
        // TODO: Tell the Pi to play a sound       
      } else {
+       //Serial.println("NOT OK");
        digitalWrite(tictacGreen, LOW);
        digitalWrite(tictacRed, HIGH);
      }    
